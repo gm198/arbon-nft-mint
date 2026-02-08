@@ -5,10 +5,18 @@ console.log('ArbOn NFT Mint Interface loaded');
 
 // Configuration
 const CONFIG = {
-    apiBase: 'https://www.arbonnft.xyz/api',
+    // Use proxy server to avoid CORS issues
+    apiBase: 'http://137.131.43.70:3000',  // Public proxy server
+    
+    // Direct API (has CORS issues)
+    directApiBase: 'https://www.arbonnft.xyz/api',
+    
     nftContract: '0x2079606049B99adB4cF70844496A026e53e47C60',
     arbitrumChainId: '0xa4b1', // 42161 in hex
-    arbitrumRpc: 'https://arb1.arbitrum.io/rpc'
+    arbitrumRpc: 'https://arb1.arbitrum.io/rpc',
+    
+    // Use proxy by default (CORS workaround)
+    useProxy: true
 };
 
 // State
@@ -341,7 +349,7 @@ function updateButtonStates() {
     elements.mintNftBtn.disabled = !state.mintData;
 }
 
-// API Functions
+// API Functions with CORS handling
 async function getChallenge() {
     try {
         if (!state.walletAddress) {
@@ -353,21 +361,75 @@ async function getChallenge() {
         elements.getChallengeBtn.disabled = true;
         elements.getChallengeBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Requesting...';
         
-        const response = await fetch(`${CONFIG.apiBase}/challenge`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                walletAddress: state.walletAddress
-            })
-        });
+        const requestData = {
+            walletAddress: state.walletAddress
+        };
         
-        if (!response.ok) {
-            throw new Error(`API error: ${response.status}`);
+        let response;
+        let data;
+        
+        // Try proxy first if configured
+        if (CONFIG.useProxy) {
+            try {
+                response = await fetchWithTimeout(`${CONFIG.apiBase}/api/challenge`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                }, 10000);
+                
+                if (!response.ok) {
+                    throw new Error(`Proxy error: ${response.status}`);
+                }
+                
+                data = await response.json();
+                logMessage('API', 'Challenge received via proxy');
+                
+            } catch (proxyError) {
+                logMessage('Warning', `Proxy failed: ${proxyError.message}, trying direct API...`);
+                
+                // Fallback to direct API
+                try {
+                    response = await fetchWithTimeout(`${CONFIG.directApiBase}/challenge`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(requestData)
+                    }, 10000);
+                    
+                    if (!response.ok) {
+                        throw new Error(`Direct API error: ${response.status}`);
+                    }
+                    
+                    data = await response.json();
+                    logMessage('API', 'Challenge received via direct API (CORS may work)');
+                    
+                } catch (directError) {
+                    // If direct API also fails, show CORS error
+                    if (directError.message.includes('Failed to fetch') || directError.message.includes('NetworkError')) {
+                        throw new Error('CORS error: API server blocks browser requests. Need proxy server.');
+                    }
+                    throw directError;
+                }
+            }
+        } else {
+            // Try direct API only
+            response = await fetchWithTimeout(`${CONFIG.directApiBase}/challenge`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            }, 10000);
+            
+            if (!response.ok) {
+                throw new Error(`API error: ${response.status}`);
+            }
+            
+            data = await response.json();
         }
-        
-        const data = await response.json();
         
         if (data.success) {
             state.challengeData = data;
@@ -391,11 +453,97 @@ async function getChallenge() {
         
     } catch (error) {
         logMessage('Error', `Failed to get challenge: ${error.message}`);
+        
+        // Show CORS-specific help
+        if (error.message.includes('CORS error')) {
+            showCORSWarning();
+        }
     } finally {
         elements.getChallengeBtn.disabled = false;
         elements.getChallengeBtn.innerHTML = '<i class="fas fa-question-circle mr-2"></i>Get Challenge';
     }
 }
+
+// Helper function for fetch with timeout
+function fetchWithTimeout(url, options, timeout = 10000) {
+    return Promise.race([
+        fetch(url, options),
+        new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Request timeout')), timeout)
+        )
+    ]);
+}
+
+// Show CORS warning
+function showCORSWarning() {
+    const warningHtml = `
+        <div class="mt-4 p-4 bg-red-900/30 border border-red-500 rounded-xl">
+            <h4 class="font-bold text-red-300 mb-2">
+                <i class="fas fa-ban mr-2"></i>CORS Error Detected
+            </h4>
+            <p class="text-red-200 mb-3">
+                The ArbOn API server blocks direct browser requests due to CORS policy.
+            </p>
+            <div class="space-y-2">
+                <p class="text-sm text-red-300">
+                    <strong>Solution:</strong> Run a proxy server or use the test server.
+                </p>
+                <div class="flex space-x-2">
+                    <button onclick="useTestServer()" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-xl">
+                        <i class="fas fa-server mr-2"></i>Use Test Server
+                    </button>
+                    <button onclick="showProxyInstructions()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-xl">
+                        <i class="fas fa-code mr-2"></i>Setup Proxy
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Insert after challenge container
+    elements.challengeContainer.insertAdjacentHTML('afterend', warningHtml);
+}
+
+// Global functions for CORS solutions
+window.useTestServer = function() {
+    logMessage('System', 'Switching to test server...');
+    window.location.href = 'http://137.131.43.70:8080/';
+};
+
+window.showProxyInstructions = function() {
+    const instructions = `
+        <div class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+            <div class="bg-gray-800 rounded-xl p-6 max-w-2xl max-h-[80vh] overflow-y-auto">
+                <h3 class="text-2xl font-bold text-green-300 mb-4">
+                    <i class="fas fa-server mr-2"></i>Proxy Server Setup
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <h4 class="font-bold text-blue-300 mb-2">1. Install dependencies:</h4>
+                        <pre class="bg-gray-900 p-3 rounded text-sm overflow-x-auto">npm install express cors axios</pre>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-blue-300 mb-2">2. Run proxy server:</h4>
+                        <pre class="bg-gray-900 p-3 rounded text-sm overflow-x-auto">node proxy-server.js</pre>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-blue-300 mb-2">3. Update frontend config:</h4>
+                        <pre class="bg-gray-900 p-3 rounded text-sm overflow-x-auto">const CONFIG = {
+    apiBase: 'http://localhost:3000',
+    // ... other config
+};</pre>
+                    </div>
+                </div>
+                <button onclick="this.parentElement.parentElement.remove()" 
+                        class="mt-6 w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-bold">
+                    Close
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', instructions);
+};
 
 async function submitAnswer() {
     try {
