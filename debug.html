@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArbOn NFT Mint - Debug Version</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: monospace; background: #0f172a; color: white; }
+        .log { border-left: 3px solid #10b981; padding-left: 10px; margin: 5px 0; }
+        .error { border-left-color: #ef4444; color: #fca5a5; }
+        .success { border-left-color: #10b981; color: #a7f3d0; }
+        .warning { border-left-color: #f59e0b; color: #fde68a; }
+    </style>
+</head>
+<body class="p-6">
+    <h1 class="text-3xl font-bold mb-6 text-green-400">🔧 ArbOn NFT Mint - Debug Mode</h1>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Left: Environment Info -->
+        <div class="bg-gray-800 p-4 rounded-xl">
+            <h2 class="text-xl font-bold mb-4 text-blue-300">🌍 Environment Check</h2>
+            <div id="env-info" class="space-y-2">
+                <div class="log">Checking environment...</div>
+            </div>
+            <button onclick="checkEnvironment()" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+                🔄 Re-check Environment
+            </button>
+        </div>
+        
+        <!-- Right: MetaMask Debug -->
+        <div class="bg-gray-800 p-4 rounded-xl">
+            <h2 class="text-xl font-bold mb-4 text-purple-300">🦊 MetaMask Debug</h2>
+            <div id="metamask-info" class="space-y-2">
+                <div class="log">Checking MetaMask...</div>
+            </div>
+            <div class="mt-4 space-y-2">
+                <button onclick="checkMetaMask()" class="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded">
+                    🔍 Check MetaMask
+                </button>
+                <button onclick="connectMetaMask()" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
+                    🔌 Connect MetaMask
+                </button>
+            </div>
+        </div>
+        
+        <!-- Full width: Console -->
+        <div class="md:col-span-2 bg-black p-4 rounded-xl">
+            <h2 class="text-xl font-bold mb-4 text-yellow-300">📝 Debug Console</h2>
+            <div id="debug-console" class="h-64 overflow-y-auto bg-gray-900 p-3 rounded">
+                <div class="log">Debug console initialized</div>
+            </div>
+            <div class="mt-4 flex space-x-2">
+                <button onclick="clearConsole()" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded">
+                    🗑️ Clear
+                </button>
+                <button onclick="runAllTests()" class="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">
+                    🚀 Run All Tests
+                </button>
+            </div>
+        </div>
+        
+        <!-- Solutions -->
+        <div class="md:col-span-2 bg-gray-800 p-4 rounded-xl">
+            <h2 class="text-xl font-bold mb-4 text-orange-300">🔧 Solutions</h2>
+            <div id="solutions" class="space-y-3">
+                <div class="p-3 bg-yellow-900/30 border border-yellow-500 rounded">
+                    <h3 class="font-bold text-yellow-300">1. Clear Cache & Hard Refresh</h3>
+                    <p class="text-yellow-200">Press <code class="bg-gray-700 px-2 py-1 rounded">Ctrl+Shift+R</code> (Windows) or <code class="bg-gray-700 px-2 py-1 rounded">Cmd+Shift+R</code> (Mac)</p>
+                </div>
+                <div class="p-3 bg-blue-900/30 border border-blue-500 rounded">
+                    <h3 class="font-bold text-blue-300">2. Check MetaMask Installation</h3>
+                    <p class="text-blue-200">Visit: <a href="https://metamask.io/download" target="_blank" class="underline">https://metamask.io/download</a></p>
+                </div>
+                <div class="p-3 bg-green-900/30 border border-green-500 rounded">
+                    <h3 class="font-bold text-green-300">3. Try Different Browser</h3>
+                    <p class="text-green-200">Chrome, Firefox, or Brave usually work best</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const consoleEl = document.getElementById('debug-console');
+        const envInfoEl = document.getElementById('env-info');
+        const mmInfoEl = document.getElementById('metamask-info');
+        
+        function log(type, message) {
+            const div = document.createElement('div');
+            div.className = `log ${type}`;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            consoleEl.appendChild(div);
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+            console.log(`[${type}] ${message}`);
+        }
+        
+        function clearConsole() {
+            consoleEl.innerHTML = '<div class="log">Console cleared</div>';
+        }
+        
+        // Environment check
+        function checkEnvironment() {
+            envInfoEl.innerHTML = '';
+            
+            // Check HTTPS
+            const isHttps = window.location.protocol === 'https:';
+            addEnvInfo('HTTPS', isHttps ? '✅ Using HTTPS' : '❌ Not HTTPS (may cause issues)', isHttps);
+            
+            // Check localhost
+            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            addEnvInfo('Localhost', isLocalhost ? '✅ Running locally' : '🌐 Running on server', true);
+            
+            // Check iframe
+            const isIframe = window.self !== window.top;
+            addEnvInfo('Iframe', isIframe ? '⚠️ Running in iframe' : '✅ Not in iframe', !isIframe);
+            
+            // Check browser
+            const ua = navigator.userAgent;
+            let browser = 'Unknown';
+            if (ua.includes('Chrome')) browser = 'Chrome';
+            else if (ua.includes('Firefox')) browser = 'Firefox';
+            else if (ua.includes('Safari')) browser = 'Safari';
+            else if (ua.includes('Edge')) browser = 'Edge';
+            addEnvInfo('Browser', `🌐 ${browser}`, true);
+            
+            // Check ethers.js
+            const hasEthers = typeof ethers !== 'undefined';
+            addEnvInfo('ethers.js', hasEthers ? '✅ Loaded' : '❌ Not loaded', hasEthers);
+            
+            log('info', 'Environment check completed');
+        }
+        
+        function addEnvInfo(name, value, isGood) {
+            const div = document.createElement('div');
+            div.className = `log ${isGood ? 'success' : 'warning'}`;
+            div.textContent = `${name}: ${value}`;
+            envInfoEl.appendChild(div);
+        }
+        
+        // MetaMask check
+        function checkMetaMask() {
+            mmInfoEl.innerHTML = '';
+            
+            // Check window.ethereum
+            const hasEthereum = typeof window.ethereum !== 'undefined';
+            addMMInfo('window.ethereum', hasEthereum ? '✅ Found' : '❌ Not found', hasEthereum);
+            
+            if (hasEthereum) {
+                // Check if it's MetaMask
+                const isMetaMask = window.ethereum.isMetaMask;
+                addMMInfo('isMetaMask', isMetaMask ? '✅ Yes' : '❌ No (might be other wallet)', isMetaMask);
+                
+                // Check network
+                if (window.ethereum.request) {
+                    window.ethereum.request({ method: 'eth_chainId' })
+                        .then(chainId => {
+                            addMMInfo('Chain ID', `🔗 ${chainId}`, chainId === '0xa4b1');
+                            log('info', `Chain ID: ${chainId}`);
+                        })
+                        .catch(err => {
+                            addMMInfo('Chain ID', `❌ Error: ${err.message}`, false);
+                        });
+                }
+                
+                // Check accounts
+                if (window.ethereum.selectedAddress) {
+                    addMMInfo('Selected Address', `📧 ${window.ethereum.selectedAddress.substring(0, 10)}...`, true);
+                }
+            }
+            
+            log('info', 'MetaMask check completed');
+        }
+        
+        function addMMInfo(name, value, isGood) {
+            const div = document.createElement('div');
+            div.className = `log ${isGood ? 'success' : 'warning'}`;
+            div.textContent = `${name}: ${value}`;
+            mmInfoEl.appendChild(div);
+        }
+        
+        // Connect MetaMask
+        async function connectMetaMask() {
+            if (typeof window.ethereum === 'undefined') {
+                log('error', 'MetaMask not detected');
+                return;
+            }
+            
+            try {
+                log('info', 'Requesting accounts...');
+                const accounts = await window.ethereum.request({ 
+                    method: 'eth_requestAccounts' 
+                });
+                
+                if (accounts && accounts.length > 0) {
+                    log('success', `Connected: ${accounts[0].substring(0, 10)}...`);
+                    addMMInfo('Connected Account', `✅ ${accounts[0].substring(0, 10)}...`, true);
+                } else {
+                    log('error', 'No accounts returned');
+                }
+            } catch (error) {
+                log('error', `Connection failed: ${error.message}`);
+                if (error.code === 4001) {
+                    log('warning', 'User rejected the connection');
+                }
+            }
+        }
+        
+        // Run all tests
+        function runAllTests() {
+            clearConsole();
+            log('info', 'Running all diagnostic tests...');
+            checkEnvironment();
+            setTimeout(checkMetaMask, 500);
+            setTimeout(() => {
+                if (typeof window.ethereum !== 'undefined') {
+                    connectMetaMask();
+                }
+            }, 1000);
+        }
+        
+        // Auto-run on load
+        setTimeout(() => {
+            checkEnvironment();
+            checkMetaMask();
+        }, 500);
+    </script>
+</body>
+</html>

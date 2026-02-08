@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple MetaMask Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; }
+        button { padding: 12px 24px; font-size: 16px; margin: 10px; cursor: pointer; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 5px; overflow: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Simple MetaMask Connection Test</h1>
+    
+    <div id="status">
+        <p>Checking MetaMask...</p>
+    </div>
+    
+    <button onclick="checkMetaMask()">Check MetaMask</button>
+    <button onclick="connectMetaMask()">Connect MetaMask</button>
+    <button onclick="getAccounts()">Get Accounts</button>
+    <button onclick="getChainId()">Get Chain ID</button>
+    
+    <h3>Results:</h3>
+    <pre id="results">No results yet</pre>
+    
+    <h3>Debug Info:</h3>
+    <pre id="debug"></pre>
+    
+    <script>
+        const resultsEl = document.getElementById('results');
+        const debugEl = document.getElementById('debug');
+        const statusEl = document.getElementById('status');
+        
+        function logResult(type, message) {
+            const time = new Date().toLocaleTimeString();
+            resultsEl.innerHTML += `[${time}] <span class="${type}">${message}</span>\n`;
+        }
+        
+        function logDebug(message) {
+            debugEl.innerHTML += message + '\n';
+        }
+        
+        function updateStatus(message, type = 'info') {
+            statusEl.innerHTML = `<p class="${type}">${message}</p>`;
+        }
+        
+        // Initial check
+        function init() {
+            logDebug('Page loaded');
+            logDebug('User agent: ' + navigator.userAgent);
+            logDebug('Protocol: ' + window.location.protocol);
+            logDebug('Host: ' + window.location.host);
+            
+            if (typeof window.ethereum !== 'undefined') {
+                updateStatus('✅ MetaMask detected', 'success');
+                logResult('success', 'MetaMask detected');
+                
+                // Log MetaMask info
+                logDebug('MetaMask properties:');
+                for (let key in window.ethereum) {
+                    if (typeof window.ethereum[key] !== 'function') {
+                        logDebug(`  ${key}: ${window.ethereum[key]}`);
+                    }
+                }
+            } else {
+                updateStatus('❌ MetaMask NOT detected', 'error');
+                logResult('error', 'MetaMask not detected');
+                logDebug('window.ethereum is undefined');
+            }
+        }
+        
+        function checkMetaMask() {
+            logResult('info', 'Checking MetaMask...');
+            if (typeof window.ethereum !== 'undefined') {
+                logResult('success', '✅ window.ethereum exists');
+                logResult('info', 'isMetaMask: ' + (window.ethereum.isMetaMask ? 'true' : 'false'));
+                logResult('info', 'Selected address: ' + (window.ethereum.selectedAddress || 'none'));
+            } else {
+                logResult('error', '❌ window.ethereum is undefined');
+            }
+        }
+        
+        async function connectMetaMask() {
+            logResult('info', 'Connecting to MetaMask...');
+            
+            if (typeof window.ethereum === 'undefined') {
+                logResult('error', 'MetaMask not available');
+                return;
+            }
+            
+            try {
+                const accounts = await window.ethereum.request({ 
+                    method: 'eth_requestAccounts' 
+                });
+                
+                if (accounts && accounts.length > 0) {
+                    logResult('success', `✅ Connected: ${accounts[0]}`);
+                    updateStatus(`Connected: ${accounts[0].substring(0, 10)}...`, 'success');
+                } else {
+                    logResult('error', 'No accounts returned');
+                }
+            } catch (error) {
+                logResult('error', `❌ Error: ${error.message}`);
+                if (error.code === 4001) {
+                    logResult('warning', 'User rejected the connection request');
+                }
+            }
+        }
+        
+        async function getAccounts() {
+            logResult('info', 'Getting accounts...');
+            
+            if (typeof window.ethereum === 'undefined') {
+                logResult('error', 'MetaMask not available');
+                return;
+            }
+            
+            try {
+                const accounts = await window.ethereum.request({ 
+                    method: 'eth_accounts' 
+                });
+                
+                if (accounts && accounts.length > 0) {
+                    logResult('success', `Accounts: ${JSON.stringify(accounts)}`);
+                } else {
+                    logResult('warning', 'No accounts found (not connected)');
+                }
+            } catch (error) {
+                logResult('error', `Error: ${error.message}`);
+            }
+        }
+        
+        async function getChainId() {
+            logResult('info', 'Getting chain ID...');
+            
+            if (typeof window.ethereum === 'undefined') {
+                logResult('error', 'MetaMask not available');
+                return;
+            }
+            
+            try {
+                const chainId = await window.ethereum.request({ 
+                    method: 'eth_chainId' 
+                });
+                logResult('success', `Chain ID: ${chainId} (${parseInt(chainId, 16)})`);
+            } catch (error) {
+                logResult('error', `Error: ${error.message}`);
+            }
+        }
+        
+        // Initialize
+        init();
+        
+        // Listen for events
+        if (typeof window.ethereum !== 'undefined') {
+            window.ethereum.on('accountsChanged', (accounts) => {
+                logResult('info', `Accounts changed: ${accounts.length > 0 ? accounts[0] : 'disconnected'}`);
+            });
+            
+            window.ethereum.on('chainChanged', (chainId) => {
+                logResult('info', `Chain changed: ${chainId}`);
+            });
+        }
+    </script>
+</body>
+</html>
