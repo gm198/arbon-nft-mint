@@ -63,6 +63,40 @@ const elements = {
 function init() {
     logMessage('System', 'ArbOn NFT Mint interface initialized');
     
+    // Check if ethers.js is loaded
+    if (typeof ethers === 'undefined') {
+        logMessage('Error', 'ethers.js not loaded yet. Waiting...');
+        
+        // Disable buttons until ethers is ready
+        elements.connectWalletBtn.disabled = true;
+        elements.connectWalletBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Loading ethers.js...';
+        
+        // Wait for ethers to load
+        const checkEthers = setInterval(() => {
+            if (typeof ethers !== 'undefined') {
+                clearInterval(checkEthers);
+                logMessage('Success', 'ethers.js loaded successfully');
+                continueInit();
+            }
+        }, 100);
+        
+        // Timeout after 10 seconds
+        setTimeout(() => {
+            if (typeof ethers === 'undefined') {
+                clearInterval(checkEthers);
+                logMessage('Error', 'ethers.js failed to load after 10 seconds');
+                elements.connectWalletBtn.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i>ethers.js Failed to Load';
+                elements.connectWalletBtn.onclick = () => location.reload();
+            }
+        }, 10000);
+        
+        return;
+    }
+    
+    continueInit();
+}
+
+function continueInit() {
     // Check if MetaMask is installed
     if (typeof window.ethereum === 'undefined') {
         logMessage('Error', 'MetaMask not detected. Please install MetaMask to use this interface.');
@@ -80,6 +114,10 @@ function init() {
     
     // Auto-connect if previously connected
     checkAutoConnect();
+    
+    // Update button state
+    elements.connectWalletBtn.disabled = false;
+    elements.connectWalletBtn.innerHTML = '<i class="fas fa-plug mr-2"></i>Connect Wallet';
 }
 
 // Logging
@@ -576,12 +614,81 @@ function checkBrowserCompatibility() {
         issues.push('Edge users: Ensure MetaMask extension is installed from Microsoft Edge Add-ons.');
     }
     
+    // Check for known problematic extensions
+    const problematicExtensions = [
+        'Immersive Translate',  // From your error logs
+        'AdBlock',
+        'uBlock Origin',
+        'Privacy Badger',
+        'NoScript'
+    ];
+    
+    // Check if page is being modified (indicating extension interference)
+    if (document.documentElement.innerHTML.length > 1000000) {
+        issues.push('Large page size detected - may indicate extension interference');
+    }
+    
     if (issues.length > 0) {
         logMessage('Warning', 'Potential compatibility issues detected:');
         issues.forEach(issue => {
             logMessage('Warning', `• ${issue}`);
         });
+        
+        // Show extension warning if relevant
+        if (issues.some(issue => issue.includes('extension'))) {
+            showExtensionWarning();
+        }
     }
+}
+
+// Show extension interference warning
+function showExtensionWarning() {
+    const warningHtml = `
+        <div class="mt-4 p-4 bg-red-900/30 border border-red-500 rounded-xl">
+            <h4 class="font-bold text-red-300 mb-2">
+                <i class="fas fa-exclamation-triangle mr-2"></i>Browser Extension Interference Detected
+            </h4>
+            <p class="text-red-200 mb-3">
+                Some browser extensions may be interfering with ethers.js or MetaMask.
+            </p>
+            <div class="space-y-2">
+                <button onclick="tryDisableExtensions()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-xl">
+                    <i class="fas fa-power-off mr-2"></i>Try Disabling Extensions Temporarily
+                </button>
+                <button onclick="tryIncognito()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-xl">
+                    <i class="fas fa-user-secret mr-2"></i>Try Incognito/Private Mode
+                </button>
+            </div>
+        </div>
+    `;
+    
+    // Insert after status indicator
+    elements.statusIndicator.insertAdjacentHTML('afterend', warningHtml);
+}
+
+// Extension troubleshooting functions
+function tryDisableExtensions() {
+    logMessage('System', 'Trying to work around extension issues...');
+    
+    // Try to reload ethers.js with cache busting
+    const newScript = document.createElement('script');
+    newScript.src = `https://cdn.ethers.io/lib/ethers-5.7.umd.min.js?t=${Date.now()}`;
+    newScript.onload = () => {
+        logMessage('Success', 'ethers.js reloaded with cache busting');
+        if (typeof ethers !== 'undefined') {
+            location.reload();
+        }
+    };
+    document.head.appendChild(newScript);
+}
+
+function tryIncognito() {
+    // Create a data URL that can be opened in incognito
+    const htmlContent = document.documentElement.outerHTML;
+    const dataUrl = `data:text/html;base64,${btoa(htmlContent)}`;
+    
+    window.open(dataUrl, '_blank');
+    logMessage('System', 'Opened page in new window (try incognito mode)');
 }
 
 // Initialize on load
