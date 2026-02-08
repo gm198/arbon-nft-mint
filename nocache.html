@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArbOn NFT Mint - No Cache Version</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Force no cache for all resources
+        const timestamp = Date.now();
+        
+        // Load ethers.js with cache busting
+        const ethersScript = document.createElement('script');
+        ethersScript.src = `https://cdn.ethers.io/lib/ethers-5.7.umd.min.js?t=${timestamp}`;
+        ethersScript.onerror = function() {
+            const backup = document.createElement('script');
+            backup.src = `https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js?t=${timestamp}`;
+            document.head.appendChild(backup);
+        };
+        document.head.appendChild(ethersScript);
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-900 text-white min-h-screen font-mono p-6">
+    <div class="max-w-4xl mx-auto">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-green-400 mb-2">
+                <i class="fas fa-bolt"></i> ArbOn NFT Mint - No Cache Version
+            </h1>
+            <p class="text-gray-400">This version bypasses all caches. Built: <span id="build-time"></span></p>
+        </div>
+        
+        <div class="bg-gray-800 rounded-xl p-6 mb-6 border border-green-500">
+            <h2 class="text-2xl font-bold text-green-300 mb-4">
+                <i class="fas fa-info-circle mr-2"></i>Cache Bypass Active
+            </h2>
+            <div class="space-y-3">
+                <div class="flex items-center">
+                    <i class="fas fa-check text-green-400 mr-3"></i>
+                    <span>Cache-Control headers set to "no-cache"</span>
+                </div>
+                <div class="flex items-center">
+                    <i class="fas fa-check text-green-400 mr-3"></i>
+                    <span>Timestamp parameter added to all resources</span>
+                </div>
+                <div class="flex items-center">
+                    <i class="fas fa-check text-green-400 mr-3"></i>
+                    <span>Forces fresh load from GitHub</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Status Panel -->
+            <div class="bg-gray-800 rounded-xl p-6">
+                <h3 class="text-xl font-bold text-blue-300 mb-4">
+                    <i class="fas fa-chart-line mr-2"></i>System Status
+                </h3>
+                <div id="status" class="space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">ethers.js:</span>
+                        <span id="ethers-status" class="text-yellow-300">Checking...</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">MetaMask:</span>
+                        <span id="metamask-status" class="text-yellow-300">Checking...</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Timestamp:</span>
+                        <span id="timestamp" class="text-gray-300"></span>
+                    </div>
+                </div>
+                <button onclick="checkStatus()" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold">
+                    <i class="fas fa-sync-alt mr-2"></i>Check Status
+                </button>
+            </div>
+            
+            <!-- Actions -->
+            <div class="bg-gray-800 rounded-xl p-6">
+                <h3 class="text-xl font-bold text-purple-300 mb-4">
+                    <i class="fas fa-rocket mr-2"></i>Quick Actions
+                </h3>
+                <div class="space-y-3">
+                    <button onclick="connectWallet()" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-bold">
+                        <i class="fas fa-plug mr-2"></i>Connect Wallet
+                    </button>
+                    <button onclick="openMainApp()" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-bold">
+                        <i class="fas fa-external-link-alt mr-2"></i>Open Main App
+                    </button>
+                    <button onclick="clearAllCache()" class="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-bold">
+                        <i class="fas fa-trash-alt mr-2"></i>Clear Browser Cache
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Log -->
+        <div class="mt-6 bg-black rounded-xl p-4">
+            <h3 class="text-xl font-bold text-yellow-300 mb-3">
+                <i class="fas fa-terminal mr-2"></i>Console Log
+            </h3>
+            <div id="log" class="h-40 overflow-y-auto bg-gray-900 p-3 rounded font-mono text-sm">
+                <div>> System initialized</div>
+            </div>
+        </div>
+        
+        <!-- Links -->
+        <div class="mt-6 text-center text-gray-500 text-sm">
+            <p>
+                <a href="https://gm198.github.io/arbon-nft-mint/" class="text-green-400 hover:text-green-300 mr-4">
+                    <i class="fas fa-home mr-1"></i>Main App
+                </a>
+                <a href="https://github.com/gm198/arbon-nft-mint" class="text-green-400 hover:text-green-300 mr-4">
+                    <i class="fab fa-github mr-1"></i>GitHub
+                </a>
+                <a href="http://137.131.43.70:8080/" class="text-green-400 hover:text-green-300">
+                    <i class="fas fa-server mr-1"></i>Test Server
+                </a>
+            </p>
+        </div>
+    </div>
+    
+    <script>
+        // Set build time
+        document.getElementById('build-time').textContent = new Date().toLocaleString();
+        document.getElementById('timestamp').textContent = timestamp;
+        
+        function log(message) {
+            const logEl = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.textContent = `> ${new Date().toLocaleTimeString()}: ${message}`;
+            logEl.appendChild(entry);
+            logEl.scrollTop = logEl.scrollHeight;
+            console.log(message);
+        }
+        
+        function checkStatus() {
+            log('Checking system status...');
+            
+            // Check ethers.js
+            const ethersStatus = document.getElementById('ethers-status');
+            if (typeof ethers !== 'undefined') {
+                ethersStatus.textContent = `✅ Loaded (v${ethers.version})`;
+                ethersStatus.className = 'text-green-300';
+                log('ethers.js loaded successfully');
+            } else {
+                ethersStatus.textContent = '❌ Not loaded';
+                ethersStatus.className = 'text-red-300';
+                log('ethers.js not loaded');
+            }
+            
+            // Check MetaMask
+            const mmStatus = document.getElementById('metamask-status');
+            if (typeof window.ethereum !== 'undefined') {
+                mmStatus.textContent = '✅ Detected';
+                mmStatus.className = 'text-green-300';
+                log('MetaMask detected');
+            } else {
+                mmStatus.textContent = '❌ Not detected';
+                mmStatus.className = 'text-red-300';
+                log('MetaMask not detected');
+            }
+        }
+        
+        async function connectWallet() {
+            if (typeof window.ethereum === 'undefined') {
+                log('Error: MetaMask not installed');
+                alert('Please install MetaMask first');
+                return;
+            }
+            
+            try {
+                log('Requesting wallet connection...');
+                const accounts = await window.ethereum.request({ 
+                    method: 'eth_requestAccounts' 
+                });
+                
+                if (accounts && accounts.length > 0) {
+                    log(`✅ Connected: ${accounts[0].substring(0, 10)}...`);
+                    alert(`Connected: ${accounts[0].substring(0, 10)}...`);
+                }
+            } catch (error) {
+                log(`Error: ${error.message}`);
+                alert(`Connection failed: ${error.message}`);
+            }
+        }
+        
+        function openMainApp() {
+            // Open main app with cache busting
+            const url = `https://gm198.github.io/arbon-nft-mint/?nocache=${Date.now()}`;
+            window.open(url, '_blank');
+            log('Opening main app with cache busting...');
+        }
+        
+        function clearAllCache() {
+            if (confirm('Clear browser cache and reload?')) {
+                // Try to clear cache
+                if (caches && caches.keys) {
+                    caches.keys().then(function(names) {
+                        for (let name of names) caches.delete(name);
+                    });
+                }
+                
+                // Force reload
+                location.reload(true);
+            }
+        }
+        
+        // Auto-check after ethers loads
+        const checkInterval = setInterval(() => {
+            if (typeof ethers !== 'undefined') {
+                clearInterval(checkInterval);
+                setTimeout(checkStatus, 500);
+            }
+        }, 100);
+        
+        // Initial log
+        log('No-cache version loaded');
+        log(`Timestamp: ${timestamp}`);
+    </script>
+</body>
+</html>
