@@ -113,10 +113,29 @@ async function connectWallet() {
     try {
         logMessage('Wallet', 'Connecting wallet...');
         
-        // Request account access
-        const accounts = await window.ethereum.request({ 
-            method: 'eth_requestAccounts' 
-        });
+        // Double-check MetaMask
+        if (typeof window.ethereum === 'undefined') {
+            throw new Error('MetaMask not detected. Please install MetaMask first.');
+        }
+        
+        // Request account access with better error handling
+        let accounts;
+        try {
+            accounts = await window.ethereum.request({ 
+                method: 'eth_requestAccounts' 
+            });
+        } catch (requestError) {
+            // User rejected the request
+            if (requestError.code === 4001) {
+                logMessage('Error', 'Connection rejected by user. Please approve the connection in MetaMask.');
+                return;
+            }
+            throw requestError;
+        }
+        
+        if (!accounts || accounts.length === 0) {
+            throw new Error('No accounts found. Please unlock MetaMask.');
+        }
         
         state.walletAddress = accounts[0];
         state.walletConnected = true;
@@ -152,8 +171,35 @@ async function connectWallet() {
             checkNetwork();
         });
         
+        // Listen for disconnect
+        window.ethereum.on('disconnect', () => {
+            logMessage('Wallet', 'Wallet disconnected');
+            resetState();
+        });
+        
     } catch (error) {
         logMessage('Error', `Wallet connection failed: ${error.message}`);
+        
+        // Show user-friendly error message
+        let userMessage = error.message;
+        if (error.message.includes('MetaMask not detected')) {
+            userMessage = 'MetaMask not found. Please install MetaMask extension.';
+            showMetaMaskGuide();
+        } else if (error.message.includes('User rejected')) {
+            userMessage = 'Connection rejected. Please approve the connection in MetaMask popup.';
+        } else if (error.message.includes('No accounts')) {
+            userMessage = 'No accounts found. Please unlock MetaMask.';
+        }
+        
+        // Update button to show error
+        elements.connectWalletBtn.innerHTML = `<i class="fas fa-exclamation-triangle mr-2"></i>${userMessage.substring(0, 30)}...`;
+        elements.connectWalletBtn.className = 'w-full bg-gradient-to-r from-red-600 to-pink-600 text-white font-bold py-3 px-6 rounded-xl';
+        
+        // Reset button after 3 seconds
+        setTimeout(() => {
+            elements.connectWalletBtn.innerHTML = '<i class="fas fa-plug mr-2"></i>Connect Wallet';
+            elements.connectWalletBtn.className = 'w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-[1.02]';
+        }, 3000);
     }
 }
 
@@ -506,5 +552,43 @@ function resetState() {
     elements.balanceInfo.className = 'text-gray-300';
 }
 
+// Browser compatibility check
+function checkBrowserCompatibility() {
+    const issues = [];
+    
+    // Check for common blockers
+    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+        issues.push('Site should be served over HTTPS for MetaMask to work properly');
+    }
+    
+    // Check if in iframe (some sites block MetaMask in iframes)
+    if (window.self !== window.top) {
+        issues.push('MetaMask may not work properly in iframes. Try opening in a new tab.');
+    }
+    
+    // Check browser
+    const userAgent = navigator.userAgent.toLowerCase();
+    if (userAgent.includes('firefox')) {
+        issues.push('Firefox users: Ensure MetaMask extension is enabled and not blocked by privacy settings.');
+    } else if (userAgent.includes('safari')) {
+        issues.push('Safari users: MetaMask may require additional permissions. Check Safari extensions.');
+    } else if (userAgent.includes('edge')) {
+        issues.push('Edge users: Ensure MetaMask extension is installed from Microsoft Edge Add-ons.');
+    }
+    
+    if (issues.length > 0) {
+        logMessage('Warning', 'Potential compatibility issues detected:');
+        issues.forEach(issue => {
+            logMessage('Warning', `• ${issue}`);
+        });
+    }
+}
+
 // Initialize on load
-window.addEventListener('DOMContentLoaded', init);
+window.addEventListener('DOMContentLoaded', () => {
+    // Check browser compatibility first
+    checkBrowserCompatibility();
+    
+    // Then initialize the app
+    init();
+});
